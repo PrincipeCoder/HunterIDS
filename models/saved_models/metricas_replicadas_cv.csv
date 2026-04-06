@@ -1,0 +1,4 @@
+Modelo,Accuracy (CV),Precision (CV),Recall (CV),F1-Score (CV)
+Regresion_Logistica,0.9197,0.9346,0.8898,0.9116
+KNN,0.9715,0.972,0.9667,0.9693
+SVM,0.9184,0.9316,0.8899,0.9103

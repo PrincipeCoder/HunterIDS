@@ -1,0 +1,4 @@
+Modelo,Accuracy,Precision,Recall (DR),F1-Score
+Regresion_Logistica,0.7258,0.9075,0.5772,0.7056
+KNN,0.7241,0.9113,0.5709,0.702
+SVM,0.7232,0.9068,0.5725,0.7019
