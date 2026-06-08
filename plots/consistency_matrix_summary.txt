@@ -1,0 +1,24 @@
+
+================================================================================
+            TABLA RESUMEN - DIMENSIONES DE LA MATRIZ DE CONSISTENCIA            
+================================================================================
+
+[ 1. VARIABLE INDEPENDIENTE: Prototipo de IDS con IA Explicable (XAI) ]
+--------------------------------------------------------------------------------
+ -> D1: Tasa de cobertura táctica
+      (Evaluada mediante explicabilidad en 'explainability.py' con SHAP)
+ -> D2: Eficiencia computacional del entrenamiento
+      Tiempo total de entrenamiento: 7.8526 segundos
+
+[ 2. VARIABLE DEPENDIENTE: Detección de intrusiones ]
+--------------------------------------------------------------------------------
+ -> D1: Efectividad de identificación (Métricas Macro Multiclase)
+      * Accuracy (Exactitud) : 0.9994
+      * Precision (Precisión): 0.9654
+      * Recall (Exhaustividad) : 0.9973
+      * F1-Score             : 0.9798
+      * Matriz de Confusión generada en 'plots/confusion_matrix.png'
+ -> D2: Agilidad de respuesta
+      Tiempo promedio de inferencia: 0.021703 milisegundos por paquete
+
+================================================================================
