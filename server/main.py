@@ -80,6 +80,15 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+@app.websocket("/ws/dashboard")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 class AlertInput(BaseModel):
     node_ip: str
     src_ip: str = "0.0.0.0"
@@ -207,3 +216,104 @@ async def receive_alert(alert_input: AlertInput):
     await manager.broadcast(alert_dict)
     
     return {"status": "success", "prediction": str(pred_class)}
+
+@app.post("/api/v1/alerts/batch")
+async def receive_alerts_batch(alerts: List[AlertInput]):
+    if "model" not in ml_models:
+        return {"status": "error", "message": "ML models not loaded"}
+        
+    if not alerts:
+        return {"status": "success", "results": []}
+        
+    model = ml_models["model"]
+    le = ml_models["le"]
+    explainer = ml_models["explainer"]
+    selected_features = ml_models["selected_features"]
+    preprocessor = ml_models["preprocessor"]
+    
+    # Extraer todas las features de la lista de alertas
+    features_list = [a.features for a in alerts]
+    df_raw = pd.DataFrame(features_list)
+    
+    # Transformar usando el pipeline guardado
+    X_prep = preprocessor.transform(df_raw)
+    
+    # Reconstruir nombres de columnas
+    nominales = ['protocol_type', 'service', 'flag']
+    numericas = [col for col in df_raw.columns if col not in nominales]
+    cat_feature_names = preprocessor.named_transformers_['cat'].get_feature_names_out(nominales)
+    all_feature_names = numericas + list(cat_feature_names)
+    
+    df_full = pd.DataFrame(X_prep, columns=all_feature_names)
+    
+    for feat in selected_features:
+        if feat not in df_full.columns:
+            df_full[feat] = 0.0
+            
+    df = df_full[selected_features]
+    
+    preds_encoded = model.predict(df)
+    preds_classes = le.inverse_transform(preds_encoded)
+    probas = model.predict_proba(df)
+    
+    # Calcular SHAP y notificar por WebSocket solo si es amenaza (o una muestra de normal)
+    results = []
+    for idx, (pred_encoded, pred_class, proba, alert_input) in enumerate(zip(preds_encoded, preds_classes, probas, alerts)):
+        confidence = float(proba[pred_encoded])
+        
+        is_threat = (str(pred_class).lower() not in ['normal', '0'])
+        
+        # Para evitar saturar el dashboard, solo enviamos SHAP por WS si es amenaza o 1 normal por lote
+        if is_threat or idx == 0:
+            df_row = df.iloc[[idx]]
+            shap_values_raw = explainer.shap_values(df_row)
+            
+            if isinstance(shap_values_raw, list):
+                shap_vals_for_class = shap_values_raw[pred_encoded][0]
+                expected_val = explainer.expected_value[pred_encoded]
+            elif len(shap_values_raw.shape) == 3:
+                shap_vals_for_class = shap_values_raw[0, :, pred_encoded]
+                expected_val = explainer.expected_value[pred_encoded]
+            else:
+                shap_vals_for_class = shap_values_raw[0]
+                expected_val = explainer.expected_value
+                if isinstance(expected_val, (list, np.ndarray)):
+                    expected_val = expected_val[pred_encoded]
+                    
+            feature_impacts = {feat: float(val) for feat, val in zip(selected_features, shap_vals_for_class)}
+            top_features = dict(sorted(feature_impacts.items(), key=lambda item: abs(item[1]), reverse=True)[:3])
+            
+            explanation = shap.Explanation(
+                values=shap_vals_for_class, 
+                base_values=expected_val, 
+                data=df_row.iloc[0].values, 
+                feature_names=selected_features
+            )
+            
+            plot_b64 = generate_shap_waterfall(explanation, pred_class)
+            
+            alert_dict = {
+                "id": os.urandom(4).hex(),
+                "node_ip": alert_input.node_ip,
+                "src_ip": alert_input.src_ip,
+                "dst_ip": alert_input.dst_ip,
+                "timestamp": alert_input.timestamp,
+                "prediction": str(pred_class),
+                "confidence": confidence,
+                "features": top_features,
+                "shap_plot_b64": plot_b64
+            }
+            
+            alerts_db.append(alert_dict)
+            if len(alerts_db) > 100:
+                alerts_db.pop(0)
+                
+            await manager.broadcast(alert_dict)
+        
+        results.append({
+            "src_ip": alert_input.src_ip,
+            "dst_ip": alert_input.dst_ip,
+            "prediction": str(pred_class)
+        })
+        
+    return {"status": "success", "results": results}

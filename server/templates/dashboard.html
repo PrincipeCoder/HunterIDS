@@ -127,14 +127,29 @@
                 <!-- Decorative Corner -->
                 <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-soc-red"></div>
                 
-                <div class="p-4 border-b border-soc-border flex justify-between items-center bg-soc-panel/80 z-10">
+                <div class="p-4 border-b border-soc-border flex justify-between items-center bg-soc-panel/80 z-10 flex-wrap gap-2">
                     <div class="flex items-center space-x-3">
                         <i class="fa-solid fa-terminal text-soc-red animate-pulse"></i>
                         <h2 class="text-lg font-bold text-soc-white uppercase tracking-widest">Live_Threat_Stream</h2>
                     </div>
-                    <button id="clear-btn" class="px-3 py-1 text-[10px] font-mono uppercase bg-soc-bg border border-soc-border hover:border-soc-red hover:text-soc-red transition-colors">
-                        [ PURGE_LOGS ]
-                    </button>
+                    
+                    <div class="flex items-center space-x-3 text-xs font-mono">
+                        <div class="relative">
+                            <i class="fa-solid fa-filter absolute left-2 top-1.5 text-soc-cyan opacity-50"></i>
+                            <select id="filter-class" class="bg-soc-bg border border-soc-border text-soc-cyan px-7 py-1 focus:border-soc-cyan outline-none appearance-none">
+                                <option value="ALL">ALL_TRAFFIC</option>
+                                <option value="MALICIOUS">THREATS_ONLY</option>
+                                <option value="NORMAL">NORMAL_ONLY</option>
+                            </select>
+                        </div>
+                        <div class="relative">
+                            <i class="fa-solid fa-search absolute left-2 top-1.5 text-soc-cyan opacity-50"></i>
+                            <input type="text" id="filter-ip" placeholder="Search IP..." class="bg-soc-bg border border-soc-border text-soc-cyan px-7 py-1 w-32 focus:border-soc-cyan outline-none placeholder-soc-cyan/30">
+                        </div>
+                        <button id="clear-btn" class="px-3 py-1 text-[10px] font-mono uppercase bg-soc-bg border border-soc-border hover:border-soc-red hover:text-soc-red transition-colors">
+                            [ PURGE_LOGS ]
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="overflow-x-auto flex-grow relative bg-soc-bg/50">

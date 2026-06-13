@@ -4,7 +4,7 @@ import json
 import configparser
 import requests
 from datetime import datetime
-from scapy.all import sniff, IP, TCP, UDP, ICMP
+from scapy.all import sniff, IP, TCP, UDP, ICMP, Raw
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Suppress scapy warnings
 
@@ -82,7 +82,9 @@ def process_flows(packets):
                     "dst_bytes": 0,
                     "flags_seen": set(),
                     "ip_src": ip_src,
-                    "ip_dst": ip_dst
+                    "ip_dst": ip_dst,
+                    "num_failed_logins": 0,
+                    "is_guest_login": 0
                 }
             
             flow = flows[flow_key]
@@ -96,6 +98,17 @@ def process_flows(packets):
                 flow["dst_bytes"] += len(pkt)
                 if proto == "tcp":
                     flow["flags_seen"].add(str(tcp_flag))
+            
+            # Deep Packet Inspection (DPI)
+            if Raw in pkt:
+                try:
+                    payload_data = pkt[Raw].load.decode('utf-8', errors='ignore').lower()
+                    if "530 login incorrect" in payload_data or "401 unauthorized" in payload_data or "authentication failure" in payload_data:
+                        flow["num_failed_logins"] += 1
+                    if "user anonymous" in payload_data or "guest login" in payload_data:
+                        flow["is_guest_login"] = 1
+                except:
+                    pass
                 
     return flows
 
@@ -145,8 +158,8 @@ def main():
                     flow["rerror_rate"] = rej_count / max(1, len(same_dst))
                     flow["same_srv_rate"] = len(same_srv) / max(1, len(same_dst))
                 
-                # Limitamos para no saturar el websocket visualmente (por ser prototipo)
-                flow_list = flow_list[:15]
+                # Ya no truncamos a 15, preparamos un lote (batch) completo
+                batch_payload = []
                 
                 for flow in flow_list:
                     duration = max(0.0, float(flow["end_time"] - flow["start_time"]))
@@ -169,6 +182,10 @@ def main():
                     features["rerror_rate"] = float(flow["rerror_rate"])
                     features["same_srv_rate"] = float(flow["same_srv_rate"])
                     
+                    # DPI Features
+                    features["num_failed_logins"] = float(flow["num_failed_logins"])
+                    features["is_guest_login"] = float(flow["is_guest_login"])
+                    
                     payload = {
                         "node_ip": node_ip,
                         "src_ip": flow["ip_src"],
@@ -176,12 +193,20 @@ def main():
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "features": features
                     }
+                    batch_payload.append(payload)
                     
+                if batch_payload:
                     try:
-                        res = requests.post(server_url, json=payload, timeout=2)
+                        batch_url = f"http://{server_host}:{server_port}/api/v1/alerts/batch"
+                        res = requests.post(batch_url, json=batch_payload, timeout=5)
                         if res.status_code == 200:
-                            pred = res.json().get("prediction", "UNKNOWN")
-                            print(f"[>] {flow['ip_src']} -> {flow['ip_dst']} | {flow['protocol_type']} {flow['service']} | count: {flow['count']} -> IA: {pred}")
+                            results = res.json().get("results", [])
+                            print(f"[+] Lote enviado: {len(batch_payload)} flujos. Analizados con éxito.")
+                            
+                            # Imprimir amenazas o flujos destacables
+                            for r in results:
+                                if r["prediction"] != "normal" and r["prediction"] != "0":
+                                    print(f"  [!] ALERTA: {r['src_ip']} -> {r['dst_ip']} | IA: {r['prediction']}")
                     except Exception as e:
                         pass # Ignorar si no hay conexión
                         

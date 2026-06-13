@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const statCritical = document.getElementById('stat-critical');
     const statNodes = document.getElementById('stat-nodes');
     const clearBtn = document.getElementById('clear-btn');
+    const filterClass = document.getElementById('filter-class');
+    const filterIp = document.getElementById('filter-ip');
     const sysTime = document.getElementById('sys-time');
     const radarTargets = document.getElementById('radar-targets');
 
@@ -35,13 +37,32 @@ document.addEventListener('DOMContentLoaded', () => {
         sysTime.textContent = now.toISOString().substr(11, 8);
     }, 1000);
 
+    function applyFilters() {
+        const classVal = filterClass.value;
+        const ipVal = filterIp.value.toLowerCase();
+        
+        const rows = alertsTableBody.querySelectorAll('tr:not(#empty-state)');
+        rows.forEach(row => {
+            const rowClass = row.getAttribute('data-threat-class');
+            const rowIps = row.getAttribute('data-ips').toLowerCase();
+            
+            let showClass = classVal === 'ALL' || rowClass === classVal;
+            let showIp = ipVal === '' || rowIps.includes(ipVal);
+            
+            row.style.display = (showClass && showIp) ? 'table-row' : 'none';
+        });
+    }
+
+    filterClass.addEventListener('change', applyFilters);
+    filterIp.addEventListener('input', applyFilters);
+
     clearBtn.addEventListener('click', () => {
-        alertsTableBody.innerHTML = '';
+        const rows = alertsTableBody.querySelectorAll('tr:not(#empty-state)');
+        rows.forEach(r => r.remove());
         totalAlerts = 0;
         criticalAlerts = 0;
         uniqueNodesMap.clear();
         updateStats();
-        alertsTableBody.appendChild(emptyStateRow);
         emptyStateRow.style.display = 'table-row';
         radarTargets.innerHTML = ''; // Clear radar
     });
@@ -110,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isNormal = alert.prediction.toLowerCase() === 'normal' || alert.prediction === '0';
         const isMalicious = !isNormal;
         
-        if (isMalicious && alert.confidence > 0.90) {
+        if (isMalicious) {
             criticalAlerts++;
         }
         uniqueNodesMap.set(alert.node_ip, new Date());
@@ -143,6 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const row = document.createElement('tr');
         row.className = `hover:bg-soc-panel transition-colors row-animate-in ${rowHighlight}`;
+        row.setAttribute('data-threat-class', isMalicious ? 'MALICIOUS' : 'NORMAL');
+        row.setAttribute('data-ips', `${alert.src_ip} ${alert.dst_ip} ${alert.node_ip}`);
         row.innerHTML = `
             <td class="px-4 py-3 whitespace-nowrap">
                 <div class="text-soc-white/80">${alert.timestamp}</div>
@@ -178,6 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         alertsTableBody.insertBefore(row, alertsTableBody.firstChild);
+        
+        // Aplica filtros a la nueva fila inmediatamente
+        applyFilters();
         
         // Attach event listener to the newly created button
         const btn = row.querySelector('.analyze-btn');
