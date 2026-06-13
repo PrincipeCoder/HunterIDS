@@ -176,11 +176,26 @@ def main():
                     features["dst_bytes"] = float(flow["dst_bytes"])
                     features["land"] = 1.0 if flow["ip_src"] == flow["ip_dst"] else 0.0
                     
-                    features["count"] = float(flow["count"])
-                    features["srv_count"] = float(flow["srv_count"])
+                    features["count"] = min(511.0, float(flow["count"]))
+                    features["srv_count"] = min(511.0, float(flow["srv_count"]))
                     features["serror_rate"] = float(flow["serror_rate"])
+                    features["srv_serror_rate"] = features["serror_rate"]
                     features["rerror_rate"] = float(flow["rerror_rate"])
+                    features["srv_rerror_rate"] = features["rerror_rate"]
                     features["same_srv_rate"] = float(flow["same_srv_rate"])
+                    features["diff_srv_rate"] = 1.0 - features["same_srv_rate"]
+                    
+                    # KDD estricto: Mapeo de ventana de host destino
+                    features["dst_host_count"] = min(255.0, float(flow["count"]))
+                    features["dst_host_srv_count"] = min(255.0, float(flow["srv_count"]))
+                    features["dst_host_same_srv_rate"] = features["same_srv_rate"]
+                    features["dst_host_diff_srv_rate"] = features["diff_srv_rate"]
+                    features["dst_host_same_src_port_rate"] = 1.0 / max(1.0, float(flow["count"]))
+                    features["dst_host_srv_diff_host_rate"] = 0.0
+                    features["dst_host_serror_rate"] = features["serror_rate"]
+                    features["dst_host_srv_serror_rate"] = features["serror_rate"]
+                    features["dst_host_rerror_rate"] = features["rerror_rate"]
+                    features["dst_host_srv_rerror_rate"] = features["rerror_rate"]
                     
                     # DPI Features
                     features["num_failed_logins"] = float(flow["num_failed_logins"])
