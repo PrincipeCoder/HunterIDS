@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let totalAlerts = 0;
     let criticalAlerts = 0;
-    const uniqueNodes = new Set();
+    const uniqueNodesMap = new Map();
 
     const alertsTableBody = document.getElementById('alerts-table-body');
     const emptyStateRow = document.getElementById('empty-state');
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alertsTableBody.innerHTML = '';
         totalAlerts = 0;
         criticalAlerts = 0;
-        uniqueNodes.clear();
+        uniqueNodesMap.clear();
         updateStats();
         alertsTableBody.appendChild(emptyStateRow);
         emptyStateRow.style.display = 'table-row';
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const x = 100 + radius * Math.cos(angle);
         const y = 100 + radius * Math.sin(angle);
         
-        blip.className = `absolute w-2 h-2 rounded-full ${isMalicious ? 'bg-soc-red shadow-[0_0_8px_#ff003c]' : 'bg-soc-yellow shadow-[0_0_8px_#ffaa00]'} animate-ping`;
+        blip.className = `absolute w-2 h-2 rounded-full ${isMalicious ? 'bg-soc-red shadow-[0_0_8px_#ff003c]' : 'bg-soc-green shadow-[0_0_8px_#00ff41]'} animate-ping`;
         blip.style.left = `${x}px`;
         blip.style.top = `${y}px`;
         
@@ -107,18 +107,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleNewAlert(alert) {
         totalAlerts++;
-        if (alert.confidence > 0.90) {
+        const isNormal = alert.prediction.toLowerCase() === 'normal' || alert.prediction === '0';
+        const isMalicious = !isNormal;
+        
+        if (isMalicious && alert.confidence > 0.90) {
             criticalAlerts++;
         }
-        uniqueNodes.add(alert.node_ip);
+        uniqueNodesMap.set(alert.node_ip, new Date());
         updateStats();
 
         if (emptyStateRow.parentNode === alertsTableBody) {
             emptyStateRow.style.display = 'none';
         }
 
-        const isMalicious = alert.prediction.toLowerCase() === 'malicious' || alert.prediction === '1' || alert.prediction === 'anomaly';
-        
         // Add visual blip to radar
         addRadarBlip(isMalicious);
 
@@ -134,8 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const confidencePercent = (alert.confidence * 100).toFixed(1);
         
-        let predClass = isMalicious ? 'text-soc-red border-soc-red bg-soc-red/10' : 'text-soc-yellow border-soc-yellow bg-soc-yellow/10';
-        let rowHighlight = isMalicious && alert.confidence > 0.9 ? 'bg-soc-red/5 border-l-2 border-soc-red' : 'border-l-2 border-transparent';
+        let predClass = isMalicious ? 'text-soc-red border-soc-red bg-soc-red/10' : 'text-soc-green border-soc-green bg-soc-green/10';
+        let rowHighlight = isMalicious && alert.confidence > 0.9 ? 'bg-soc-red/5 border-l-2 border-soc-red' : (isNormal ? 'bg-soc-green/5 border-l-2 border-soc-green' : 'border-l-2 border-transparent');
+        let alertLabel = isMalicious ? `DETECTED: ${alert.prediction.toUpperCase()}` : 'NORMAL_TRAFFIC';
+        let confColor = isMalicious && alert.confidence > 0.9 ? 'bg-soc-red' : (isMalicious ? 'bg-soc-yellow' : 'bg-soc-green');
+        let confText = isMalicious && alert.confidence > 0.9 ? 'text-soc-red' : (isMalicious ? 'text-soc-yellow' : 'text-soc-green');
         
         const row = document.createElement('tr');
         row.className = `hover:bg-soc-panel transition-colors row-animate-in ${rowHighlight}`;
@@ -148,15 +152,15 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
                 <span class="inline-block px-2 py-0.5 text-[10px] uppercase font-bold border ${predClass}">
-                    ${isMalicious ? 'MALWARE_DETECTED' : 'ANOMALY_WARN'}
+                    ${alertLabel}
                 </span>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
                 <div class="flex items-center space-x-2">
                     <div class="w-16 bg-soc-bg border border-soc-border h-2">
-                        <div class="${alert.confidence > 0.9 ? 'bg-soc-red' : 'bg-soc-yellow'} h-full" style="width: ${confidencePercent}%"></div>
+                        <div class="${confColor} h-full" style="width: ${confidencePercent}%"></div>
                     </div>
-                    <span class="${alert.confidence > 0.9 ? 'text-soc-red' : 'text-soc-text'} text-xs">${confidencePercent}%</span>
+                    <span class="${confText} text-xs">${confidencePercent}%</span>
                 </div>
             </td>
             <td class="px-4 py-3">
@@ -197,7 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateStats() {
         statTotal.textContent = padZero(totalAlerts, 3);
         statCritical.textContent = padZero(criticalAlerts, 3);
-        statNodes.textContent = padZero(uniqueNodes.size, 3);
+        statNodes.textContent = padZero(uniqueNodesMap.size, 3);
+        
+        const activeNodesList = document.getElementById('active-nodes-list');
+        if (activeNodesList) {
+            activeNodesList.innerHTML = '';
+            uniqueNodesMap.forEach((lastSeen, ip) => {
+                const ageSec = Math.floor((new Date() - lastSeen) / 1000);
+                const color = ageSec < 10 ? 'text-soc-green' : 'text-soc-yellow';
+                const label = ageSec < 10 ? 'ONLINE' : 'AWAY';
+                activeNodesList.innerHTML += `
+                    <div class="flex justify-between items-center border-b border-soc-border/30 pb-1">
+                        <span>[${ip}]</span>
+                        <span class="${color} animate-pulse">${label}</span>
+                    </div>
+                `;
+            });
+        }
     }
 
     connect();

@@ -109,12 +109,15 @@
                     </div>
                 </div>
 
-                <!-- Metric: Active Nodes -->
-                <div class="soc-panel border-l-2 border-soc-yellow relative overflow-hidden group">
-                    <div class="text-[10px] font-mono text-soc-yellow mb-2">METRIC // ACTIVE_NODES</div>
-                    <div class="flex justify-between items-end">
-                        <div class="text-5xl font-mono font-bold text-soc-yellow" id="stat-nodes">000</div>
-                        <div class="text-soc-yellow/30 text-3xl"><i class="fa-solid fa-server"></i></div>
+                <!-- Metric: Active Nodes List -->
+                <div class="soc-panel border-l-2 border-soc-green relative overflow-hidden group flex-grow flex flex-col h-48">
+                    <div class="text-[10px] font-mono text-soc-green mb-2">NETWORK // CONNECTED_NODES</div>
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="text-3xl font-mono font-bold text-soc-green" id="stat-nodes">000</div>
+                        <div class="text-soc-green/30 text-2xl"><i class="fa-solid fa-server"></i></div>
+                    </div>
+                    <div id="active-nodes-list" class="flex flex-col space-y-1 overflow-y-auto pr-2 text-[10px] font-mono">
+                        <!-- Node elements will go here -->
                     </div>
                 </div>
             </div>
