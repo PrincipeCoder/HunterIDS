@@ -148,7 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="text-soc-white/80">${alert.timestamp}</div>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
-                <div class="text-soc-cyan">[${alert.node_ip}]</div>
+                <div class="text-soc-cyan"><span class="opacity-70">${alert.src_ip || 'N/A'}</span> &rarr; ${alert.dst_ip || 'N/A'}</div>
+                <div class="text-[9px] text-soc-text opacity-50 uppercase tracking-widest">SENSOR: ${alert.node_ip}</div>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
                 <span class="inline-block px-2 py-0.5 text-[10px] uppercase font-bold border ${predClass}">

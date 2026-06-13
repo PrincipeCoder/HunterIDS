@@ -124,12 +124,32 @@ def main():
             if len(packets) > 0:
                 flows = process_flows(packets)
                 
-                # Limitamos para no saturar el websocket (por ser prototipo)
-                flow_list = list(flows.values())[:15]
+                flow_list = list(flows.values())
+                
+                # Calcular características de ventana de tiempo (Time-Window features)
+                for flow in flow_list:
+                    flag = get_flag(flow["flags_seen"]) if flow["protocol_type"] == "tcp" else "SF"
+                    flow["computed_flag"] = flag
+                    
+                for flow in flow_list:
+                    same_dst = [f for f in flow_list if f["ip_dst"] == flow["ip_dst"]]
+                    same_srv = [f for f in same_dst if f["service"] == flow["service"]]
+                    
+                    flow["count"] = len(same_dst)
+                    flow["srv_count"] = len(same_srv)
+                    
+                    s0_count = sum(1 for f in same_dst if f.get("computed_flag") == "S0")
+                    rej_count = sum(1 for f in same_dst if f.get("computed_flag") == "REJ")
+                    
+                    flow["serror_rate"] = s0_count / max(1, len(same_dst))
+                    flow["rerror_rate"] = rej_count / max(1, len(same_dst))
+                    flow["same_srv_rate"] = len(same_srv) / max(1, len(same_dst))
+                
+                # Limitamos para no saturar el websocket visualmente (por ser prototipo)
+                flow_list = flow_list[:15]
                 
                 for flow in flow_list:
                     duration = max(0.0, float(flow["end_time"] - flow["start_time"]))
-                    flag = get_flag(flow["flags_seen"]) if flow["protocol_type"] == "tcp" else "SF"
                     
                     # Generar las 41 features con base 0.0
                     features = {col: 0.0 for col in NSL_KDD_COLUMNS}
@@ -138,13 +158,21 @@ def main():
                     features["duration"] = duration
                     features["protocol_type"] = flow["protocol_type"]
                     features["service"] = flow["service"]
-                    features["flag"] = flag
+                    features["flag"] = flow["computed_flag"]
                     features["src_bytes"] = float(flow["src_bytes"])
                     features["dst_bytes"] = float(flow["dst_bytes"])
                     features["land"] = 1.0 if flow["ip_src"] == flow["ip_dst"] else 0.0
                     
+                    features["count"] = float(flow["count"])
+                    features["srv_count"] = float(flow["srv_count"])
+                    features["serror_rate"] = float(flow["serror_rate"])
+                    features["rerror_rate"] = float(flow["rerror_rate"])
+                    features["same_srv_rate"] = float(flow["same_srv_rate"])
+                    
                     payload = {
                         "node_ip": node_ip,
+                        "src_ip": flow["ip_src"],
+                        "dst_ip": flow["ip_dst"],
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "features": features
                     }
@@ -153,7 +181,7 @@ def main():
                         res = requests.post(server_url, json=payload, timeout=2)
                         if res.status_code == 200:
                             pred = res.json().get("prediction", "UNKNOWN")
-                            print(f"[>] {flow['protocol_type']} {flow['service']} | {flow['src_bytes']}b -> IA: {pred}")
+                            print(f"[>] {flow['ip_src']} -> {flow['ip_dst']} | {flow['protocol_type']} {flow['service']} | count: {flow['count']} -> IA: {pred}")
                     except Exception as e:
                         pass # Ignorar si no hay conexión
                         

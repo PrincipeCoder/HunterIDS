@@ -145,7 +145,7 @@
                         <thead class="text-[10px] text-soc-cyan bg-soc-panel sticky top-0 border-b border-soc-border">
                             <tr>
                                 <th scope="col" class="px-4 py-3 font-normal tracking-wider">TIMESTAMP</th>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">NODE_IP</th>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">CONNECTION (SRC &rarr; DST)</th>
                                 <th scope="col" class="px-4 py-3 font-normal tracking-wider">CLASS</th>
                                 <th scope="col" class="px-4 py-3 font-normal tracking-wider">CONFIDENCE</th>
                                 <th scope="col" class="px-4 py-3 font-normal tracking-wider">SHAP_FEATURES</th>
@@ -155,7 +155,7 @@
                         <tbody id="alerts-table-body" class="divide-y divide-soc-border/50">
                             <!-- Empty State -->
                             <tr id="empty-state">
-                                <td colspan="5" class="px-6 py-24 text-center">
+                                <td colspan="6" class="px-6 py-24 text-center">
                                     <div class="flex flex-col items-center justify-center opacity-50">
                                         <i class="fa-solid fa-spinner fa-spin text-soc-cyan text-3xl mb-4"></i>
                                         <p class="font-mono text-soc-cyan uppercase tracking-widest text-xs">Awaiting telemetry data...</p>

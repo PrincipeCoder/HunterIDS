@@ -82,6 +82,8 @@ manager = ConnectionManager()
 
 class AlertInput(BaseModel):
     node_ip: str
+    src_ip: str = "0.0.0.0"
+    dst_ip: str = "0.0.0.0"
     timestamp: str
     features: Dict[str, Any]
 
@@ -189,6 +191,8 @@ async def receive_alert(alert_input: AlertInput):
     alert_dict = {
         "id": os.urandom(4).hex(),
         "node_ip": alert_input.node_ip,
+        "src_ip": alert_input.src_ip,
+        "dst_ip": alert_input.dst_ip,
         "timestamp": alert_input.timestamp,
         "prediction": str(pred_class),
         "confidence": confidence,
