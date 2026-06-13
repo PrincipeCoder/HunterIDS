@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC Dashboard | HunterIDS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        soc: {
+                            bg: '#050a0f',
+                            panel: '#0a1118',
+                            border: '#1a2b3c',
+                            cyan: '#00f0ff',
+                            red: '#ff003c',
+                            green: '#00ff41',
+                            yellow: '#ffaa00',
+                            text: '#8a9fac',
+                            white: '#e0e6ed'
+                        }
+                    },
+                    fontFamily: {
+                        'mono': ['"Fira Code"', '"JetBrains Mono"', 'monospace'],
+                        'sans': ['"Rajdhani"', '"Inter"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-soc-bg text-soc-text font-sans overflow-x-hidden crt-effect">
+    <!-- Scanline Overlay -->
+    <div class="scanlines"></div>
+
+    <div class="min-h-screen flex flex-col relative z-10 p-4 lg:p-6">
+        <!-- Header -->
+        <header class="soc-panel mb-6 flex justify-between items-center border-l-4 border-l-soc-cyan">
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <div class="text-soc-cyan text-3xl animate-pulse">
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-widest text-soc-white uppercase">Hunter<span class="text-soc-cyan">IDS</span></h1>
+                    <p class="text-xs font-mono tracking-[0.2em] text-soc-cyan/70">SECURITY_OPERATIONS_CENTER // GLOBAL_MONITOR</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-6">
+                <!-- System Clock -->
+                <div class="hidden md:block text-right font-mono text-soc-white">
+                    <div id="sys-time" class="text-xl">00:00:00</div>
+                    <div class="text-[10px] text-soc-cyan">SYS.TIME [UTC]</div>
+                </div>
+
+                <!-- Connection Status -->
+                <div class="flex items-center space-x-3 bg-soc-bg border border-soc-border px-4 py-2 rounded-sm">
+                    <div class="relative flex h-3 w-3">
+                        <span id="conn-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-soc-green opacity-75"></span>
+                        <span id="conn-dot" class="relative inline-flex rounded-full h-3 w-3 bg-soc-green"></span>
+                    </div>
+                    <span class="text-xs font-mono font-bold uppercase tracking-wider text-soc-green" id="connection-status">UPLINK_ACTIVE</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Left Sidebar (Stats & Radar) -->
+            <div class="lg:col-span-1 flex flex-col space-y-6">
+                
+                <!-- Radar Visual -->
+                <div class="soc-panel border-t-2 border-soc-cyan h-64 flex items-center justify-center relative overflow-hidden">
+                    <div class="absolute top-2 left-2 text-[10px] font-mono text-soc-cyan/50">SECTOR_SCAN</div>
+                    <div class="radar">
+                        <div class="radar-beam"></div>
+                    </div>
+                    <!-- Target Blips will be added here via JS -->
+                    <div id="radar-targets" class="absolute inset-0"></div>
+                </div>
+
+                <!-- Metric: Total Threat Events -->
+                <div class="soc-panel border-l-2 border-soc-cyan relative overflow-hidden group">
+                    <div class="text-[10px] font-mono text-soc-cyan mb-2">METRIC // TOTAL_EVENTS</div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-5xl font-mono font-bold text-soc-white" id="stat-total">000</div>
+                        <div class="text-soc-cyan/30 text-3xl"><i class="fa-solid fa-satellite-dish"></i></div>
+                    </div>
+                </div>
+
+                <!-- Metric: Critical Alerts -->
+                <div class="soc-panel border-l-2 border-soc-red relative overflow-hidden group glitch-hover">
+                    <div class="text-[10px] font-mono text-soc-red mb-2 animate-pulse">METRIC // SEV_1_CRITICAL</div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-5xl font-mono font-bold text-soc-red" id="stat-critical">000</div>
+                        <div class="text-soc-red/30 text-3xl"><i class="fa-solid fa-skull-crossbones"></i></div>
+                    </div>
+                </div>
+
+                <!-- Metric: Active Nodes -->
+                <div class="soc-panel border-l-2 border-soc-yellow relative overflow-hidden group">
+                    <div class="text-[10px] font-mono text-soc-yellow mb-2">METRIC // ACTIVE_NODES</div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-5xl font-mono font-bold text-soc-yellow" id="stat-nodes">000</div>
+                        <div class="text-soc-yellow/30 text-3xl"><i class="fa-solid fa-server"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Area (Live Stream Terminal) -->
+            <div class="lg:col-span-3 soc-panel flex flex-col border-t-2 border-soc-red relative">
+                <!-- Decorative Corner -->
+                <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-soc-red"></div>
+                
+                <div class="p-4 border-b border-soc-border flex justify-between items-center bg-soc-panel/80 z-10">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-terminal text-soc-red animate-pulse"></i>
+                        <h2 class="text-lg font-bold text-soc-white uppercase tracking-widest">Live_Threat_Stream</h2>
+                    </div>
+                    <button id="clear-btn" class="px-3 py-1 text-[10px] font-mono uppercase bg-soc-bg border border-soc-border hover:border-soc-red hover:text-soc-red transition-colors">
+                        [ PURGE_LOGS ]
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto flex-grow relative bg-soc-bg/50">
+                    <!-- Terminal grid background -->
+                    <div class="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+
+                    <table class="w-full text-left text-sm font-mono whitespace-nowrap relative z-10">
+                        <thead class="text-[10px] text-soc-cyan bg-soc-panel sticky top-0 border-b border-soc-border">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">TIMESTAMP</th>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">NODE_IP</th>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">CLASS</th>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">CONFIDENCE</th>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">SHAP_FEATURES</th>
+                                <th scope="col" class="px-4 py-3 font-normal tracking-wider text-right">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-table-body" class="divide-y divide-soc-border/50">
+                            <!-- Empty State -->
+                            <tr id="empty-state">
+                                <td colspan="5" class="px-6 py-24 text-center">
+                                    <div class="flex flex-col items-center justify-center opacity-50">
+                                        <i class="fa-solid fa-spinner fa-spin text-soc-cyan text-3xl mb-4"></i>
+                                        <p class="font-mono text-soc-cyan uppercase tracking-widest text-xs">Awaiting telemetry data...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SHAP Modal -->
+    <div id="shap-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="soc-panel max-w-4xl w-full mx-4 relative border-t-4 border-soc-cyan">
+            <!-- Close Button -->
+            <button id="close-modal" class="absolute top-4 right-4 text-soc-text hover:text-soc-white transition-colors">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+            
+            <h2 class="text-xl font-mono text-soc-cyan mb-4 uppercase tracking-widest"><i class="fa-solid fa-microscope mr-2"></i>XAI Analysis: SHAP Waterfall</h2>
+            <div class="text-xs font-mono text-soc-text mb-6">Visualización algorítmica de la contribución de características a la predicción final.</div>
+            
+            <div class="bg-[#0a1118] border border-soc-border rounded overflow-hidden flex items-center justify-center min-h-[400px]">
+                <img id="shap-image" src="" alt="SHAP Plot" class="max-w-full max-h-[600px] object-contain">
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

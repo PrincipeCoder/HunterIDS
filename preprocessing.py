@@ -157,8 +157,7 @@ def pipeline_preprocesamiento(train_path, test_path):
         print(f"  {i}. {feature}")
         
     print("\n[SUCCESS] Pipeline completado. Datos listos para entrenamiento de algoritmos IDS.")
-    
-    return X_train_final, y_train_final, X_test_final, y_test_final, final_features
+    return X_train_final, y_train_final, X_test_final, y_test_final, final_features, preprocessor
 
 if __name__ == "__main__":
     # Detecta automáticamente la carpeta del script
@@ -171,7 +170,7 @@ if __name__ == "__main__":
         print(f"\n[ERROR] No se encontró el archivo en: {TRAIN_PATH}")
     else:
         # Ejecuta el pipeline y recupera los datos en la RAM
-        X_train, y_train, X_test, y_test, features = pipeline_preprocesamiento(TRAIN_PATH, TEST_PATH)
+        X_train, y_train, X_test, y_test, features, preprocessor = pipeline_preprocesamiento(TRAIN_PATH, TEST_PATH)
         
         # =========================================================================
         # NUEVO: ALMACENAMIENTO PERSISTENTE EN DISCO DURO
@@ -203,8 +202,14 @@ if __name__ == "__main__":
         features_path = os.path.join(PROCESSED_DIR, "selected_features.json")
         with open(features_path, "w") as f:
             json.dump(features, f)
+        import joblib
+        MODELS_DIR = os.path.join(BASE_DIR, "models")
+        os.makedirs(MODELS_DIR, exist_ok=True)
+        preprocessor_path = os.path.join(MODELS_DIR, "preprocessor.pkl")
+        joblib.dump(preprocessor, preprocessor_path)
             
         print(f"[SUCCESS] ¡Archivos físicos guardados con éxito en la ruta!")
+        print(f" -> {preprocessor_path}")
         print(f" -> {train_out_path}")
         print(f" -> {test_out_path}")
         print(f" -> {features_path}")

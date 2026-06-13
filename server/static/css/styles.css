@@ -1,0 +1,155 @@
+/* Base Resets and Variables */
+:root {
+    --color-bg: #050a0f;
+    --color-panel: #0a1118;
+    --color-border: #1a2b3c;
+    --color-cyan: #00f0ff;
+    --color-red: #ff003c;
+    --color-green: #00ff41;
+    --color-yellow: #ffaa00;
+}
+
+body {
+    background-color: var(--color-bg);
+}
+
+/* SOC Panel Style */
+.soc-panel {
+    background-color: var(--color-panel);
+    border: 1px solid var(--color-border);
+    padding: 1.5rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.02);
+    position: relative;
+}
+
+/* Cyber Grid Background */
+.grid-bg {
+    background-size: 30px 30px;
+    background-image: 
+        linear-gradient(to right, rgba(26, 43, 60, 0.2) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(26, 43, 60, 0.2) 1px, transparent 1px);
+}
+
+/* CRT Scanlines Effect */
+.scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.1) 50%,
+        rgba(0,0,0,0.1)
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.3;
+}
+
+/* CRT Flicker/Glow */
+.crt-effect {
+    text-shadow: 0 0 2px rgba(0, 240, 255, 0.3);
+}
+
+/* Radar CSS Animation */
+.radar {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    background: 
+        radial-gradient(circle at center, transparent 30%, rgba(0, 240, 255, 0.05) 50%, transparent 70%),
+        linear-gradient(90deg, transparent 49.5%, rgba(0, 240, 255, 0.2) 49.5%, rgba(0, 240, 255, 0.2) 50.5%, transparent 50.5%),
+        linear-gradient(0deg, transparent 49.5%, rgba(0, 240, 255, 0.2) 49.5%, rgba(0, 240, 255, 0.2) 50.5%, transparent 50.5%);
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+}
+
+.radar-beam {
+    width: 50%;
+    height: 50%;
+    background: linear-gradient(45deg, rgba(0, 240, 255, 0) 0%, rgba(0, 240, 255, 0.4) 100%);
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform-origin: bottom left;
+    border-right: 2px solid var(--color-cyan);
+    animation: radar-spin 3s linear infinite;
+    border-top-right-radius: 100%;
+}
+
+@keyframes radar-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Glitch Effect on Hover for Critical Metrics */
+.glitch-hover:hover {
+    animation: glitch-anim 0.2s linear infinite;
+}
+
+@keyframes glitch-anim {
+    0% { transform: translate(0) }
+    20% { transform: translate(-2px, 1px) }
+    40% { transform: translate(-1px, -1px) }
+    60% { transform: translate(2px, 1px) }
+    80% { transform: translate(1px, -1px) }
+    100% { transform: translate(0) }
+}
+
+/* Table Row Entry Animation */
+@keyframes cyberDropIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+        background-color: rgba(255, 0, 60, 0.2);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+        background-color: transparent;
+    }
+}
+
+.row-animate-in {
+    animation: cyberDropIn 0.5s ease-out forwards;
+}
+
+/* Custom Scrollbar for Terminal */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg);
+    border-left: 1px solid var(--color-border);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-cyan);
+}
+
+/* Neon text utilities */
+.text-neon-cyan {
+    color: var(--color-cyan);
+    text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+}
+
+.text-neon-red {
+    color: var(--color-red);
+    text-shadow: 0 0 8px rgba(255, 0, 60, 0.6);
+}
+
+.bg-neon-red {
+    background-color: var(--color-red);
+    box-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
+}
