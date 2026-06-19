@@ -37,6 +37,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-soc-bg text-soc-text font-sans overflow-x-hidden crt-effect">
     <!-- Scanline Overlay -->
@@ -52,8 +54,8 @@
                     </div>
                 </div>
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-bold tracking-widest text-soc-white uppercase">Hunter<span class="text-soc-cyan">IDS</span></h1>
-                    <p class="text-xs font-mono tracking-[0.2em] text-soc-cyan/70">SECURITY_OPERATIONS_CENTER // GLOBAL_MONITOR</p>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-widest uppercase chrome-text">Hunter<span class="text-soc-cyan drop-shadow-md">IDS</span></h1>
+                    <p class="text-xs font-mono tracking-[0.2em] text-soc-cyan/70 text-neon-cyan">SECURITY_OPERATIONS_CENTER // GLOBAL_MONITOR</p>
                 </div>
             </div>
             
@@ -75,112 +77,217 @@
             </div>
         </header>
 
-        <!-- Main Content Grid -->
-        <main class="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Main Content Grid (Dense Kibana Style) -->
+        <main class="flex-grow flex flex-col gap-4">
             
-            <!-- Left Sidebar (Stats & Radar) -->
-            <div class="lg:col-span-1 flex flex-col space-y-6">
+            <!-- Top Row: Timeline & Top Alerts -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-64">
                 
-                <!-- Radar Visual -->
-                <div class="soc-panel border-t-2 border-soc-cyan h-64 flex items-center justify-center relative overflow-hidden">
-                    <div class="absolute top-2 left-2 text-[10px] font-mono text-soc-cyan/50">SECTOR_SCAN</div>
-                    <div class="radar">
-                        <div class="radar-beam"></div>
+                <!-- Events Over Time -->
+                <div class="lg:col-span-8 soc-panel flex flex-col p-3 border-t-2 border-soc-cyan">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-xs font-bold text-soc-white tracking-widest uppercase"><i class="fa-solid fa-chart-area mr-2 text-soc-cyan"></i>Events Over Time</h3>
+                        <div class="flex space-x-2 text-soc-text text-[10px] cursor-pointer">
+                            <i class="fa-solid fa-info-circle hover:text-soc-white"></i>
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-expand hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
                     </div>
-                    <!-- Target Blips will be added here via JS -->
-                    <div id="radar-targets" class="absolute inset-0"></div>
-                </div>
-
-                <!-- Metric: Total Threat Events -->
-                <div class="soc-panel border-l-2 border-soc-cyan relative overflow-hidden group">
-                    <div class="text-[10px] font-mono text-soc-cyan mb-2">METRIC // TOTAL_EVENTS</div>
-                    <div class="flex justify-between items-end">
-                        <div class="text-5xl font-mono font-bold text-soc-white" id="stat-total">000</div>
-                        <div class="text-soc-cyan/30 text-3xl"><i class="fa-solid fa-satellite-dish"></i></div>
+                    <div class="flex-grow relative mt-2 w-full h-full">
+                        <canvas id="chart-events-timeline"></canvas>
                     </div>
                 </div>
 
-                <!-- Metric: Critical Alerts -->
-                <div class="soc-panel border-l-2 border-soc-red relative overflow-hidden group glitch-hover">
-                    <div class="text-[10px] font-mono text-soc-red mb-2 animate-pulse">METRIC // SEV_1_CRITICAL</div>
-                    <div class="flex justify-between items-end">
-                        <div class="text-5xl font-mono font-bold text-soc-red" id="stat-critical">000</div>
-                        <div class="text-soc-red/30 text-3xl"><i class="fa-solid fa-skull-crossbones"></i></div>
+                <!-- Top Alerts Table -->
+                <div class="lg:col-span-3 soc-panel flex flex-col p-3 border-t-2 border-soc-red">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-xs font-bold text-soc-white tracking-widest uppercase"><i class="fa-solid fa-list mr-2 text-soc-red"></i>Top Alerts</h3>
+                        <div class="flex space-x-2 text-soc-text text-[10px] cursor-pointer">
+                            <i class="fa-solid fa-info-circle hover:text-soc-white"></i>
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-expand hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow overflow-y-auto mt-2 text-[10px] font-mono pr-1">
+                        <table class="w-full text-left">
+                            <thead class="text-soc-cyan sticky top-0 bg-[var(--color-panel)] z-10 border-b border-soc-border">
+                                <tr>
+                                    <th class="py-1">Term / Rule</th>
+                                    <th class="py-1">Count</th>
+                                    <th class="text-right py-1">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-soc-border/30">
+                                <tr><td colspan="3" class="text-center py-6 text-soc-cyan/50 italic">Awaiting Data...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- Metric: Active Nodes List -->
-                <div class="soc-panel border-l-2 border-soc-green relative overflow-hidden group flex-grow flex flex-col h-48">
-                    <div class="text-[10px] font-mono text-soc-green mb-2">NETWORK // CONNECTED_NODES</div>
-                    <div class="flex justify-between items-end mb-4">
-                        <div class="text-3xl font-mono font-bold text-soc-green" id="stat-nodes">000</div>
-                        <div class="text-soc-green/30 text-2xl"><i class="fa-solid fa-server"></i></div>
+                <!-- Trends Mini-Widget -->
+                <div class="lg:col-span-1 soc-panel flex flex-col p-2 text-center border-t-2 border-soc-green">
+                    <div class="border-b border-soc-border pb-1 mb-2">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">Trends</h3>
                     </div>
-                    <div id="active-nodes-list" class="flex flex-col space-y-1 overflow-y-auto pr-2 text-[10px] font-mono">
-                        <!-- Node elements will go here -->
+                    <div class="flex-grow flex flex-col justify-around text-[11px] font-mono">
+                        <div class="text-soc-red bg-soc-red/10 py-1 rounded"><i class="fa-solid fa-arrow-down mr-1"></i> -0.00%</div>
+                        <div class="text-soc-green bg-soc-green/10 py-1 rounded"><i class="fa-solid fa-arrow-up mr-1"></i> +0.00%</div>
+                        <div class="text-soc-yellow bg-soc-yellow/10 py-1 rounded"><i class="fa-solid fa-minus mr-1"></i> 0.00%</div>
+                        <div class="text-soc-cyan bg-soc-cyan/10 py-1 rounded"><i class="fa-solid fa-minus mr-1"></i> ?%</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Area (Live Stream Terminal) -->
-            <div class="lg:col-span-3 soc-panel flex flex-col border-t-2 border-soc-red relative">
-                <!-- Decorative Corner -->
-                <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-soc-red"></div>
+            <!-- Middle Row: Charts Grid (Donuts & Bars) -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 h-64">
                 
-                <div class="p-4 border-b border-soc-border flex justify-between items-center bg-soc-panel/80 z-10 flex-wrap gap-2">
-                    <div class="flex items-center space-x-3">
-                        <i class="fa-solid fa-terminal text-soc-red animate-pulse"></i>
-                        <h2 class="text-lg font-bold text-soc-white uppercase tracking-widest">Live_Threat_Stream</h2>
+                <!-- Event Types -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border hover:border-soc-cyan transition-colors">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">Event Types</h3>
+                        <div class="flex space-x-1 text-soc-text text-[8px] cursor-pointer">
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
                     </div>
-                    
-                    <div class="flex items-center space-x-3 text-xs font-mono">
-                        <div class="relative">
-                            <i class="fa-solid fa-filter absolute left-2 top-1.5 text-soc-cyan opacity-50"></i>
-                            <select id="filter-class" class="bg-soc-bg border border-soc-border text-soc-cyan px-7 py-1 focus:border-soc-cyan outline-none appearance-none">
-                                <option value="ALL">ALL_TRAFFIC</option>
-                                <option value="MALICIOUS">THREATS_ONLY</option>
-                                <option value="NORMAL">NORMAL_ONLY</option>
-                            </select>
-                        </div>
-                        <div class="relative">
-                            <i class="fa-solid fa-search absolute left-2 top-1.5 text-soc-cyan opacity-50"></i>
-                            <input type="text" id="filter-ip" placeholder="Search IP..." class="bg-soc-bg border border-soc-border text-soc-cyan px-7 py-1 w-32 focus:border-soc-cyan outline-none placeholder-soc-cyan/30">
-                        </div>
-                        <button id="clear-btn" class="px-3 py-1 text-[10px] font-mono uppercase bg-soc-bg border border-soc-border hover:border-soc-red hover:text-soc-red transition-colors">
-                            [ PURGE_LOGS ]
-                        </button>
+                    <div class="flex-grow relative mt-2 w-full h-full flex justify-center items-center">
+                        <canvas id="chart-event-types"></canvas>
                     </div>
                 </div>
-                
-                <div class="overflow-x-auto flex-grow relative bg-soc-bg/50">
-                    <!-- Terminal grid background -->
-                    <div class="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
 
-                    <table class="w-full text-left text-sm font-mono whitespace-nowrap relative z-10">
-                        <thead class="text-[10px] text-soc-cyan bg-soc-panel sticky top-0 border-b border-soc-border">
-                            <tr>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">TIMESTAMP</th>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">CONNECTION (SRC &rarr; DST)</th>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">CLASS</th>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">CONFIDENCE</th>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider">SHAP_FEATURES</th>
-                                <th scope="col" class="px-4 py-3 font-normal tracking-wider text-right">ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alerts-table-body" class="divide-y divide-soc-border/50">
-                            <!-- Empty State -->
-                            <tr id="empty-state">
-                                <td colspan="6" class="px-6 py-24 text-center">
-                                    <div class="flex flex-col items-center justify-center opacity-50">
-                                        <i class="fa-solid fa-spinner fa-spin text-soc-cyan text-3xl mb-4"></i>
-                                        <p class="font-mono text-soc-cyan uppercase tracking-widest text-xs">Awaiting telemetry data...</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- HTTP Version -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border hover:border-soc-cyan transition-colors">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">HTTP Version</h3>
+                        <div class="flex space-x-1 text-soc-text text-[8px] cursor-pointer">
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow relative mt-2 w-full h-full flex justify-center items-center">
+                        <canvas id="chart-http-version"></canvas>
+                    </div>
                 </div>
+
+                <!-- HTTP Methods -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border hover:border-soc-cyan transition-colors">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">HTTP Methods</h3>
+                        <div class="flex space-x-1 text-soc-text text-[8px] cursor-pointer">
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow relative mt-2 w-full h-full flex justify-center items-center">
+                        <canvas id="chart-http-methods"></canvas>
+                    </div>
+                </div>
+
+                <!-- HTTP Status Codes -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border hover:border-soc-cyan transition-colors">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">Status Codes</h3>
+                        <div class="flex space-x-1 text-soc-text text-[8px] cursor-pointer">
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow relative mt-2 w-full h-full flex justify-center items-center">
+                        <canvas id="chart-http-status"></canvas>
+                    </div>
+                </div>
+
+                <!-- TLS Version -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border hover:border-soc-cyan transition-colors">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">TLS Version</h3>
+                        <div class="flex space-x-1 text-soc-text text-[8px] cursor-pointer">
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow relative mt-2 w-full h-full flex justify-center items-center">
+                        <canvas id="chart-tls-version"></canvas>
+                    </div>
+                </div>
+
+                <!-- DNS Types -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border hover:border-soc-cyan transition-colors">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-[10px] font-bold text-soc-white tracking-widest uppercase">DNS Types</h3>
+                        <div class="flex space-x-1 text-soc-text text-[8px] cursor-pointer">
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow relative mt-2 w-full h-full flex justify-center items-center text-center">
+                         <div class="text-soc-cyan/50 text-[10px] font-mono italic">Other values (0)</div>
+                    </div>
+                </div>
+
             </div>
+
+            <!-- Bottom Row: Metadata Tables -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-grow min-h-[250px]">
+                
+                <!-- User Agents -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-xs font-bold text-soc-white tracking-widest uppercase"><i class="fa-solid fa-users mr-2 text-soc-cyan"></i>User-Agents</h3>
+                        <div class="flex space-x-2 text-soc-text text-[10px] cursor-pointer">
+                            <i class="fa-solid fa-info-circle hover:text-soc-white"></i>
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-expand hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow overflow-y-auto mt-2 text-[10px] font-mono pr-1">
+                        <table class="w-full text-left table-fixed">
+                            <thead class="text-soc-cyan sticky top-0 bg-[var(--color-panel)] z-10 border-b border-soc-border">
+                                <tr>
+                                    <th class="w-8/12 py-1">Term</th>
+                                    <th class="w-2/12 py-1">Count</th>
+                                    <th class="w-2/12 text-right py-1">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-soc-border/30">
+                                <tr><td colspan="3" class="text-center py-6 text-soc-cyan/50 italic">Awaiting Data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TLS Subject -->
+                <div class="soc-panel p-3 flex flex-col border-t-2 border-soc-border">
+                    <div class="flex justify-between items-center border-b border-soc-border pb-1">
+                        <h3 class="text-xs font-bold text-soc-white tracking-widest uppercase"><i class="fa-solid fa-certificate mr-2 text-soc-cyan"></i>TLS Subject</h3>
+                        <div class="flex space-x-2 text-soc-text text-[10px] cursor-pointer">
+                            <i class="fa-solid fa-info-circle hover:text-soc-white"></i>
+                            <i class="fa-solid fa-cog hover:text-soc-white"></i>
+                            <i class="fa-solid fa-expand hover:text-soc-white"></i>
+                            <i class="fa-solid fa-times hover:text-soc-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow overflow-y-auto mt-2 text-[10px] font-mono pr-1">
+                        <table class="w-full text-left table-fixed">
+                            <thead class="text-soc-cyan sticky top-0 bg-[var(--color-panel)] z-10 border-b border-soc-border">
+                                <tr>
+                                    <th class="w-8/12 py-1">Term</th>
+                                    <th class="w-2/12 py-1">Count</th>
+                                    <th class="w-2/12 text-right py-1">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-soc-border/30">
+                                <tr><td colspan="3" class="text-center py-6 text-soc-cyan/50 italic">Awaiting Data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
         </main>
     </div>
 
@@ -203,5 +310,6 @@
 
     <!-- Scripts -->
     <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/dashboard_charts.js"></script>
 </body>
 </html>

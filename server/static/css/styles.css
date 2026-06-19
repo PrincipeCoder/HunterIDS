@@ -1,33 +1,75 @@
 /* Base Resets and Variables */
 :root {
-    --color-bg: #050a0f;
-    --color-panel: #0a1118;
+    --color-bg: #03060a;
+    --color-panel: rgba(10, 17, 24, 0.65);
     --color-border: #1a2b3c;
     --color-cyan: #00f0ff;
+    --color-cyan-dim: rgba(0, 240, 255, 0.2);
     --color-red: #ff003c;
+    --color-red-dim: rgba(255, 0, 60, 0.2);
     --color-green: #00ff41;
-    --color-yellow: #ffaa00;
+    --color-green-dim: rgba(0, 255, 65, 0.2);
+    --color-magenta: #ff00ff;
 }
 
 body {
     background-color: var(--color-bg);
+    /* Vignette effect on the body */
+    box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+    min-height: 100vh;
 }
 
-/* SOC Panel Style */
+/* SOC Panel Style (Glassmorphism & Beveled Corners) */
 .soc-panel {
     background-color: var(--color-panel);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--color-border);
     padding: 1.5rem;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.02);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(0, 240, 255, 0.05);
     position: relative;
+    clip-path: polygon(
+        0 0, 
+        calc(100% - 15px) 0, 
+        100% 15px, 
+        100% 100%, 
+        15px 100%, 
+        0 calc(100% - 15px)
+    );
+    transition: all 0.3s ease;
+}
+
+.soc-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    clip-path: inherit;
+    z-index: 1;
+}
+
+/* Specific borders to maintain visual cues but adapted for clip-path */
+.border-l-soc-cyan { border-left: 3px solid var(--color-cyan); }
+.border-l-soc-red { border-left: 3px solid var(--color-red); }
+.border-l-soc-green { border-left: 3px solid var(--color-green); }
+
+/* Chrome Brushed Text Effect for Header */
+.chrome-text {
+    background: linear-gradient(to bottom, #ffffff 0%, #b0c4de 40%, #46556b 50%, #b0c4de 60%, #ffffff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    letter-spacing: 0.1em;
 }
 
 /* Cyber Grid Background */
 .grid-bg {
-    background-size: 30px 30px;
+    background-size: 40px 40px;
     background-image: 
-        linear-gradient(to right, rgba(26, 43, 60, 0.2) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(26, 43, 60, 0.2) 1px, transparent 1px);
+        linear-gradient(to right, rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
 }
 
 /* CRT Scanlines Effect */
@@ -55,51 +97,158 @@ body {
     text-shadow: 0 0 2px rgba(0, 240, 255, 0.3);
 }
 
-/* Radar CSS Animation */
+/* 3D Isometric Radar */
+.radar-container {
+    perspective: 1000px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
 .radar {
     width: 200px;
     height: 200px;
     border-radius: 50%;
-    border: 1px solid rgba(0, 240, 255, 0.3);
+    border: 2px solid rgba(0, 240, 255, 0.5);
     background: 
-        radial-gradient(circle at center, transparent 30%, rgba(0, 240, 255, 0.05) 50%, transparent 70%),
-        linear-gradient(90deg, transparent 49.5%, rgba(0, 240, 255, 0.2) 49.5%, rgba(0, 240, 255, 0.2) 50.5%, transparent 50.5%),
-        linear-gradient(0deg, transparent 49.5%, rgba(0, 240, 255, 0.2) 49.5%, rgba(0, 240, 255, 0.2) 50.5%, transparent 50.5%);
+        radial-gradient(circle at center, transparent 30%, rgba(0, 240, 255, 0.1) 50%, transparent 70%),
+        linear-gradient(90deg, transparent 49.5%, rgba(0, 240, 255, 0.4) 49.5%, rgba(0, 240, 255, 0.4) 50.5%, transparent 50.5%),
+        linear-gradient(0deg, transparent 49.5%, rgba(0, 240, 255, 0.4) 49.5%, rgba(0, 240, 255, 0.4) 50.5%, transparent 50.5%);
     position: relative;
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), inset 0 0 30px rgba(0, 240, 255, 0.2);
+    /* Isometric Transform */
+    transform: rotateX(60deg) rotateZ(45deg);
+    transform-style: preserve-3d;
+}
+
+/* Add depth to radar */
+.radar::after {
+    content: '';
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 5px;
+    border: 1px dashed rgba(0, 240, 255, 0.3);
+    border-radius: 50%;
+    pointer-events: none;
 }
 
 .radar-beam {
-    width: 50%;
-    height: 50%;
-    background: linear-gradient(45deg, rgba(0, 240, 255, 0) 0%, rgba(0, 240, 255, 0.4) 100%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
     position: absolute;
-    top: 0;
-    left: 50%;
-    transform-origin: bottom left;
-    border-right: 2px solid var(--color-cyan);
+    top: 0; left: 0;
+    background: conic-gradient(from 0deg, transparent 70%, rgba(0, 240, 255, 0.8) 100%);
     animation: radar-spin 3s linear infinite;
-    border-top-right-radius: 100%;
 }
 
 @keyframes radar-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from { transform: rotateZ(0deg); }
+    to { transform: rotateZ(360deg); }
 }
 
-/* Glitch Effect on Hover for Critical Metrics */
-.glitch-hover:hover {
-    animation: glitch-anim 0.2s linear infinite;
+/* Progress Circles for Metrics */
+.metric-ring {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background: conic-gradient(rgba(0, 240, 255, 0.1) 100%, transparent 0%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+.metric-ring::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    background-color: var(--color-bg);
+    border-radius: 50%;
+    z-index: 1;
+}
+.metric-value {
+    position: relative;
+    z-index: 2;
 }
 
-@keyframes glitch-anim {
-    0% { transform: translate(0) }
-    20% { transform: translate(-2px, 1px) }
-    40% { transform: translate(-1px, -1px) }
-    60% { transform: translate(2px, 1px) }
-    80% { transform: translate(1px, -1px) }
-    100% { transform: translate(0) }
+.metric-ring-red { background: conic-gradient(rgba(255, 0, 60, 0.2) 100%, transparent 0%); }
+.metric-ring-green { background: conic-gradient(rgba(0, 255, 65, 0.2) 100%, transparent 0%); }
+
+/* Physical Tactile Buttons */
+.btn-tactile {
+    background: linear-gradient(145deg, #121c26, #0d151c);
+    border: 1px solid var(--color-border);
+    box-shadow: 4px 4px 10px rgba(0,0,0,0.8), 
+               -2px -2px 5px rgba(255,255,255,0.05);
+    color: var(--color-cyan);
+    transition: all 0.1s ease;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
 }
+
+.btn-tactile:active {
+    box-shadow: inset 4px 4px 10px rgba(0,0,0,0.8), 
+               inset -2px -2px 5px rgba(255,255,255,0.02);
+    transform: translateY(2px);
+    color: var(--color-white);
+}
+
+.input-tactile {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--color-border);
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8);
+    color: var(--color-cyan);
+    padding: 0.5rem 1rem;
+    padding-left: 2rem;
+    border-radius: 4px;
+}
+
+.input-tactile:focus {
+    border-color: var(--color-cyan);
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), 0 0 5px rgba(0, 240, 255, 0.3);
+    outline: none;
+}
+
+/* Data Net Spinner */
+.data-net-spinner {
+    width: 60px;
+    height: 60px;
+    border: 2px solid transparent;
+    border-top-color: var(--color-cyan);
+    border-bottom-color: var(--color-cyan);
+    border-radius: 50%;
+    animation: spin 2s linear infinite;
+    position: relative;
+    margin: 0 auto;
+}
+.data-net-spinner::before {
+    content: '';
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 5px;
+    border: 2px solid transparent;
+    border-left-color: var(--color-magenta);
+    border-right-color: var(--color-magenta);
+    border-radius: 50%;
+    animation: spin-reverse 1.5s linear infinite;
+}
+.data-net-spinner::after {
+    content: '';
+    position: absolute;
+    top: 15px; left: 15px; right: 15px; bottom: 15px;
+    border: 2px solid transparent;
+    border-top-color: var(--color-green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+
 
 /* Table Row Entry Animation */
 @keyframes cyberDropIn {
@@ -121,35 +270,51 @@ body {
 
 /* Custom Scrollbar for Terminal */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-    background: var(--color-bg);
-    border-left: 1px solid var(--color-border);
+    background: rgba(0,0,0,0.3);
 }
-
 ::-webkit-scrollbar-thumb {
     background: var(--color-border);
+    border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-cyan);
+}
+
+/* Glitch Effect on Hover for Critical Metrics */
+.glitch-hover:hover {
+    animation: glitch-anim 0.2s linear infinite;
+}
+
+@keyframes glitch-anim {
+    0% { transform: translate(0) }
+    20% { transform: translate(-2px, 1px) }
+    40% { transform: translate(-1px, -1px) }
+    60% { transform: translate(2px, 1px) }
+    80% { transform: translate(1px, -1px) }
+    100% { transform: translate(0) }
 }
 
 /* Neon text utilities */
 .text-neon-cyan {
     color: var(--color-cyan);
-    text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
 }
 
 .text-neon-red {
     color: var(--color-red);
-    text-shadow: 0 0 8px rgba(255, 0, 60, 0.6);
+    text-shadow: 0 0 10px rgba(255, 0, 60, 0.8);
+}
+
+.text-neon-magenta {
+    color: var(--color-magenta);
+    text-shadow: 0 0 15px rgba(255, 0, 255, 0.9);
 }
 
 .bg-neon-red {
     background-color: var(--color-red);
-    box-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.8);
 }
