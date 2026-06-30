@@ -99,67 +99,77 @@ def generate_global_explanations(shap_values, X_test, class_names):
     plt.savefig('plots/shap_global_beeswarm.png', dpi=300)
     plt.close()
 
-def find_critical_true_positive(model, X_test, y_test_real, le, target_categories=['u2r', 'r2l']):
+def find_critical_failure(model, X_test, y_test_real, le):
     """
-    Realiza una búsqueda programática para encontrar un "Verdadero Positivo" crítico,
-    como por ejemplo una muestra de la clase 'u2r' o 'r2l' correctamente detectada,
-    sirviendo como el estudio de caso táctico para el paper.
+    Módulo de Diagnóstico de Fallos: 
+    Busca programáticamente un error de clasificación (Falso Positivo o Falso Negativo) 
+    para analizar por qué falló el modelo (especialmente ante ataques Zero-Day o ambigüedad U2R).
     """
+    ATTACK_MAP = {
+        'back': 'dos', 'land': 'dos', 'neptune': 'dos', 'pod': 'dos', 'smurf': 'dos', 
+        'teardrop': 'dos', 'apache2': 'dos', 'mailbomb': 'dos', 'processtable': 'dos', 'udpstorm': 'dos',
+        'ipsweep': 'probe', 'nmap': 'probe', 'portsweep': 'probe', 'satan': 'probe', 
+        'mscan': 'probe', 'saint': 'probe',
+        'ftp_write': 'r2l', 'guess_passwd': 'r2l', 'imap': 'r2l', 'multihop': 'r2l', 
+        'phf': 'r2l', 'spy': 'r2l', 'warezclient': 'r2l', 'warezmaster': 'r2l',
+        'sendmail': 'r2l', 'named': 'r2l', 'snmpgetattack': 'r2l', 'snmpguess': 'r2l', 
+        'xlock': 'r2l', 'xsnoop': 'r2l', 'worm': 'r2l',
+        'buffer_overflow': 'u2r', 'loadmodule': 'u2r', 'perl': 'u2r', 'rootkit': 'u2r', 
+        'httptunnel': 'u2r', 'ps': 'u2r', 'sqlattack': 'u2r', 'xterm': 'u2r',
+        'normal': 'normal'
+    }
+
     y_pred_encoded = model.predict(X_test)
     y_pred_real = le.inverse_transform(y_pred_encoded)
     
-    # Primer pase: Buscar un verdadero positivo que encaje en las categorías críticas solicitadas
+    # 1. Buscar un Falso Positivo crítico (normal clasificado como U2R o ataque)
     for i in range(len(X_test)):
         real = y_test_real.iloc[i]
         pred = y_pred_real[i]
-        if real == pred and real in target_categories:
-            return i, real
+        real_macro = ATTACK_MAP.get(real, 'unknown')
+        pred_macro = ATTACK_MAP.get(pred, 'unknown')
+        if real_macro == 'normal' and pred_macro != 'normal':
+            return i, real, pred
             
-    # Segundo pase: Si el conjunto de test no tuviera R2L/U2R correctamente clasificados, 
-    # buscaremos cualquier alerta de intrusión (ej. 'dos' o 'probe') que sea Verdadero Positivo
+    # 2. Buscar un Falso Negativo crítico (Ataque clasificado como normal)
     for i in range(len(X_test)):
         real = y_test_real.iloc[i]
         pred = y_pred_real[i]
-        if real == pred and real != 'normal':
-            return i, real
+        real_macro = ATTACK_MAP.get(real, 'unknown')
+        pred_macro = ATTACK_MAP.get(pred, 'unknown')
+        if real_macro != 'normal' and pred_macro == 'normal':
+            return i, real, pred
             
-    # Último recurso (fallback)
-    return 0, y_test_real.iloc[0]
+    # Último recurso (fallback) si no hay errores (poco probable en KDDTest+)
+    return 0, y_test_real.iloc[0], y_pred_real[0]
 
-def generate_local_explanations(explainer, shap_values, X_test, sample_idx, sample_class, le):
+def generate_local_explanations(explainer, shap_values, X_test, sample_idx, sample_class_real, sample_class_pred, le):
     """
-    Genera un SHAP Waterfall Plot para un caso de estudio individual, 
+    Genera un SHAP Waterfall Plot para un caso de estudio individual de fallo, 
     utilizando los nombres reales de las características.
-    Esto representa el escenario donde un analista SOC de seguridad audita una alerta.
+    Esto representa el escenario donde un analista SOC diagnostica un error.
     """
-    print(f"[*] Generando SHAP Waterfall Plot local (Índice Muestra: {sample_idx}, Clase: {sample_class})...")
+    print(f"[*] Generando SHAP Waterfall Plot local para Error (Índice: {sample_idx}, Real: {sample_class_real}, Predicción: {sample_class_pred})...")
     
-    # Identificar el índice numérico correspondiente a esta clase en el encoder
-    class_idx = le.transform([sample_class])[0]
+    # Explicamos por qué el modelo tomó la decisión (usamos la clase predicha)
+    class_idx = le.transform([sample_class_pred])[0]
     
     # Extraer la muestra y sus características reales
     sample_series = X_test.iloc[sample_idx]
     
-    # Preparar el objeto shap.Explanation (requerido por las versiones modernas de waterfall_plot)
-    # Combina el valor esperado (base), los valores shap correspondientes y los valores crudos de la red.
+    # Preparar el objeto shap.Explanation
     explanation = shap.Explanation(
         values=shap_values[class_idx][sample_idx], 
-        base_values=explainer.expected_value[class_idx], 
+        base_values=explainer.expected_value[class_idx] if isinstance(explainer.expected_value, list) else explainer.expected_value, 
         data=sample_series.values, 
         feature_names=sample_series.index.tolist()
     )
     
-    # Comentario SOC / Analista de Ciberseguridad:
-    # Este gráfico es fundamental en tiempo real. Permite al analista comprender la cadena 
-    # de factores técnicos desencadenantes. Se parte del riesgo promedio (base_value) y se observa 
-    # de manera aditiva qué variables (ej. alta tasa de errores en flags) sumaron probabilidad a la 
-    # alerta de ataque, validando la legitimidad de la inferencia.
-    
     plt.figure(figsize=(10, 7))
     shap.waterfall_plot(explanation, show=False)
-    plt.title(f"SHAP Waterfall Plot - Caso Crítico Local (Alerta Tipo: {sample_class})")
+    plt.title(f"Diagnóstico de Fallo - SHAP Waterfall\nReal: {sample_class_real} | Predicho: {sample_class_pred}")
     plt.tight_layout()
-    plt.savefig('plots/shap_local_attack.png', dpi=300)
+    plt.savefig('plots/shap_local_failure.png', dpi=300)
     plt.close()
 
 def main():
@@ -179,10 +189,10 @@ def main():
     print("[*] 3. Procesando gráficos globales (Summary y Beeswarm)...")
     generate_global_explanations(shap_values, X_test, class_names)
     
-    # 4. Explicabilidad Local (Caso de Estudio para el Paper)
-    print("[*] 4. Buscando y explicando un caso crítico de ataque...")
-    sample_idx, sample_class = find_critical_true_positive(model, X_test, y_test_real, le)
-    generate_local_explanations(explainer, shap_values, X_test, sample_idx, sample_class, le)
+    # 4. Explicabilidad Local (Diagnóstico de Fallos)
+    print("[*] 4. Buscando y explicando un caso crítico de error (FP/FN)...")
+    sample_idx, sample_class_real, sample_class_pred = find_critical_failure(model, X_test, y_test_real, le)
+    generate_local_explanations(explainer, shap_values, X_test, sample_idx, sample_class_real, sample_class_pred, le)
     
     print("[+] Ejecución completada. Los gráficos de explicabilidad han sido guardados en 'plots/'.")
 

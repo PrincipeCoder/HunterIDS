@@ -15,6 +15,85 @@ import io
 import base64
 from contextlib import asynccontextmanager
 
+# Constantes de Mapeo Semántico
+ATTACK_MAP_MACRO = {
+    'back': 'dos', 'land': 'dos', 'neptune': 'dos', 'pod': 'dos', 'smurf': 'dos', 
+    'teardrop': 'dos', 'apache2': 'dos', 'mailbomb': 'dos', 'processtable': 'dos', 'udpstorm': 'dos',
+    'ipsweep': 'probe', 'nmap': 'probe', 'portsweep': 'probe', 'satan': 'probe', 
+    'mscan': 'probe', 'saint': 'probe',
+    'ftp_write': 'r2l', 'guess_passwd': 'r2l', 'imap': 'r2l', 'multihop': 'r2l', 
+    'phf': 'r2l', 'spy': 'r2l', 'warezclient': 'r2l', 'warezmaster': 'r2l',
+    'sendmail': 'r2l', 'named': 'r2l', 'snmpgetattack': 'r2l', 'snmpguess': 'r2l', 
+    'xlock': 'r2l', 'xsnoop': 'r2l', 'worm': 'r2l',
+    'buffer_overflow': 'u2r', 'loadmodule': 'u2r', 'perl': 'u2r', 'rootkit': 'u2r', 
+    'httptunnel': 'u2r', 'ps': 'u2r', 'sqlattack': 'u2r', 'xterm': 'u2r',
+    'normal': 'normal'
+}
+
+MITRE_MAPPING = {
+    'src_bytes': 'T1041 Exfiltration Over C2 Channel',
+    'dst_bytes': 'T1041 Exfiltration Over C2 Channel',
+    'count': 'T1046 Network Service Scanning',
+    'srv_count': 'T1046 Network Service Scanning',
+    'flag_S0': 'T1046 Network Service Scanning (SYN Stealth)',
+    'flag_REJ': 'T1046 Network Service Scanning',
+    'wrong_fragment': 'T1498 Network Denial of Service',
+    'dst_host_same_src_port_rate': 'T1046 Network Service Scanning',
+    'dst_host_srv_count': 'T1046 Network Service Scanning',
+    'num_failed_logins': 'T1110 Brute Force',
+    'num_compromised': 'T1068 Exploitation for Privilege Escalation',
+    'root_shell': 'T1068 Exploitation for Privilege Escalation'
+}
+
+def generate_tactical_explanation(top_features: dict, pred_class: str) -> dict:
+    """Generates NLP explanation and MITRE mapping based on top SHAP features."""
+    macro_class = ATTACK_MAP_MACRO.get(pred_class, 'unknown')
+    
+    if macro_class == 'normal':
+        return {
+            "nlp": "Tráfico con comportamiento estadísticamente normal según línea base.",
+            "mitre": ["N/A"]
+        }
+        
+    feat_names = list(top_features.keys())
+    
+    # NLP Engine
+    nlp_parts = []
+    if any('bytes' in f for f in feat_names):
+        nlp_parts.append("anomalía en volumen de transferencia de datos (posible exfiltración o flood)")
+    if any('count' in f or 'rate' in f for f in feat_names):
+        nlp_parts.append("alta tasa de conexiones simultáneas (posible escaneo o DoS)")
+    if any('flag' in f for f in feat_names):
+        nlp_parts.append("manipulación inusual de flags TCP")
+    if any('failed_logins' in f or 'compromised' in f or 'root' in f for f in feat_names):
+        nlp_parts.append("indicios de compromiso de credenciales o escalado de privilegios")
+        
+    if not nlp_parts:
+        nlp_text = f"Anomalía detectada principalmente por el comportamiento inusual en: {', '.join(feat_names)}."
+    else:
+        nlp_text = "El sistema detectó " + " y ".join(nlp_parts) + "."
+        
+    # MITRE Mapping
+    mitre_tactics = []
+    for f in feat_names:
+        for k, v in MITRE_MAPPING.items():
+            if k in f:
+                mitre_tactics.append(v)
+                break
+                
+    mitre_tactics = list(set(mitre_tactics))
+    if not mitre_tactics:
+        if macro_class == 'dos': mitre_tactics = ["T1498 Network Denial of Service"]
+        elif macro_class == 'probe': mitre_tactics = ["T1046 Network Service Scanning"]
+        elif macro_class == 'u2r': mitre_tactics = ["T1068 Exploitation for Privilege Escalation"]
+        elif macro_class == 'r2l': mitre_tactics = ["T1110 Brute Force"]
+        else: mitre_tactics = ["T1190 Exploit Public-Facing Application (Inferred)"]
+        
+    return {
+        "nlp": nlp_text.capitalize(),
+        "mitre": mitre_tactics
+    }
+
 # Setup paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
@@ -197,6 +276,9 @@ async def receive_alert(alert_input: AlertInput):
     
     plot_b64 = generate_shap_waterfall(explanation, pred_class)
     
+    tactical_info = generate_tactical_explanation(top_features, pred_class)
+    macro_class = ATTACK_MAP_MACRO.get(pred_class, 'unknown')
+    
     alert_dict = {
         "id": os.urandom(4).hex(),
         "node_ip": alert_input.node_ip,
@@ -204,9 +286,11 @@ async def receive_alert(alert_input: AlertInput):
         "dst_ip": alert_input.dst_ip,
         "timestamp": alert_input.timestamp,
         "prediction": str(pred_class),
+        "macro_class": macro_class,
         "confidence": confidence,
         "features": top_features,
-        "shap_plot_b64": plot_b64
+        "shap_plot_b64": plot_b64,
+        "tactical_info": tactical_info
     }
     
     alerts_db.append(alert_dict)
@@ -292,6 +376,9 @@ async def receive_alerts_batch(alerts: List[AlertInput]):
             
             plot_b64 = generate_shap_waterfall(explanation, pred_class)
             
+            tactical_info = generate_tactical_explanation(top_features, pred_class)
+            macro_class = ATTACK_MAP_MACRO.get(pred_class, 'unknown')
+            
             alert_dict = {
                 "id": os.urandom(4).hex(),
                 "node_ip": alert_input.node_ip,
@@ -299,9 +386,11 @@ async def receive_alerts_batch(alerts: List[AlertInput]):
                 "dst_ip": alert_input.dst_ip,
                 "timestamp": alert_input.timestamp,
                 "prediction": str(pred_class),
+                "macro_class": macro_class,
                 "confidence": confidence,
                 "features": top_features,
-                "shap_plot_b64": plot_b64
+                "shap_plot_b64": plot_b64,
+                "tactical_info": tactical_info
             }
             
             alerts_db.append(alert_dict)

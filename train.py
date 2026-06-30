@@ -2,6 +2,7 @@ import os
 import json
 import time
 import joblib
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -41,38 +42,54 @@ def load_and_filter_data():
     
     return X_train, y_train, X_test, y_test
 
-def encode_labels(y_train, y_test):
+def encode_labels(y_train):
     """
-    Aplica LabelEncoder a las etiquetas (normal, dos, probe, r2l, u2r).
+    Aplica LabelEncoder a las etiquetas.
     Guarda el encoder para mapeo inverso en el módulo XAI.
     """
     le = LabelEncoder()
     # Ajustar y transformar en el conjunto de entrenamiento
     y_train_encoded = le.fit_transform(y_train)
-    # Transformar el conjunto de prueba utilizando el mismo vocabulario
-    y_test_encoded = le.transform(y_test)
     
     # Guardar el codificador de etiquetas
     joblib.dump(le, 'models/label_encoder.pkl')
     
-    return y_train_encoded, y_test_encoded, le
+    return y_train_encoded, le
 
-def train_model(X_train, y_train):
+def train_model(X_train, y_train, le):
     """
     Configura y entrena el clasificador LightGBM.
     Registra el tiempo de entrenamiento para evaluar la Dimensión: Eficiencia Computacional (D2).
     """
+    ATTACK_MAP_U2R = ['buffer_overflow', 'loadmodule', 'perl', 'rootkit', 'httptunnel', 'ps', 'sqlattack', 'xterm']
+    
+    from sklearn.utils.class_weight import compute_class_weight
+    
+    # Calculamos primero los pesos balanceados matemáticamente correctos
+    balanced_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+    class_weights = dict(zip(np.unique(y_train), balanced_weights))
+    
+    # Modificación Manual (Cierre de Brecha de Precisión)
+    # Penalizaciones personalizadas para reducir Falsos Positivos/Negativos en U2R y R2L
+    for i, cls_name in enumerate(le.classes_):
+        if cls_name in ATTACK_MAP_U2R:
+            # Multiplicador para dar más peso y evitar que se ignore o se confunda (FN/FP)
+            class_weights[i] = class_weights[i] * 2.5
+        elif cls_name == 'normal':
+            # Mantenemos el peso base balanceado para normal, pero lo reforzamos ligeramente 
+            # para que el modelo sea más escéptico a predecir U2R erróneamente (reduciendo FP en U2R)
+            class_weights[i] = class_weights[i] * 1.5
+
     # Instanciamos LGBMClassifier con la arquitectura avanzada requerida:
     model = LGBMClassifier(
         objective='multiclass',  # Función de pérdida para clasificación multiclase
-        num_class=5,             # Dominio de 5 clases (normal + 4 de ataque)
         random_state=42,         # Semilla para reproducibilidad
-        class_weight='balanced', # Se reintroduce 'balanced' ya que se eliminó SMOTE, permitiendo que LightGBM maneje nativamente el desbalanceo.
+        class_weight=class_weights, # Pesos personalizados
         n_estimators=300,        # Mayor número de iteraciones para un aprendizaje más profundo del error residual.
         learning_rate=0.03,      # Reducción de la tasa para lograr convergencia más suave y exacta en pérdida multiclase.
-        num_leaves=127,          # Incremento de hojas para expandir la capacidad del modelo de memorizar complejas reglas de seguridad.
-        max_depth=10,            # Límite de profundidad para controlar el sobreajuste ante el aumento de num_leaves.
-        min_child_samples=20,    # Regularización para evitar ruido de los datos sintéticos de SMOTE.
+        num_leaves=63,           # Ajustado a 63: Un balance entre 127 (sobreajuste) y 31 (subajuste)
+        max_depth=8,             # Límite de profundidad en 8 para permitir aprender firmas complejas
+        min_child_samples=15,    # Regularización relajada ligeramente para permitir hojas más pequeñas en U2R
         subsample=0.8,           # Robustez estadística al muestrear aleatoriamente filas (bagging en cada árbol).
         colsample_bytree=0.8,    # Robustez mediante submuestreo de columnas en cada árbol.
         n_jobs=-1                # Todos los núcleos para máxima eficiencia
@@ -101,6 +118,20 @@ def evaluate_model(model, X_test, y_test, le):
     y la Agilidad de respuesta (D2) en inferencia.
     Genera la Matriz de Confusión.
     """
+    ATTACK_MAP = {
+        'back': 'dos', 'land': 'dos', 'neptune': 'dos', 'pod': 'dos', 'smurf': 'dos', 
+        'teardrop': 'dos', 'apache2': 'dos', 'mailbomb': 'dos', 'processtable': 'dos', 'udpstorm': 'dos',
+        'ipsweep': 'probe', 'nmap': 'probe', 'portsweep': 'probe', 'satan': 'probe', 
+        'mscan': 'probe', 'saint': 'probe',
+        'ftp_write': 'r2l', 'guess_passwd': 'r2l', 'imap': 'r2l', 'multihop': 'r2l', 
+        'phf': 'r2l', 'spy': 'r2l', 'warezclient': 'r2l', 'warezmaster': 'r2l',
+        'sendmail': 'r2l', 'named': 'r2l', 'snmpgetattack': 'r2l', 'snmpguess': 'r2l', 
+        'xlock': 'r2l', 'xsnoop': 'r2l', 'worm': 'r2l',
+        'buffer_overflow': 'u2r', 'loadmodule': 'u2r', 'perl': 'u2r', 'rootkit': 'u2r', 
+        'httptunnel': 'u2r', 'ps': 'u2r', 'sqlattack': 'u2r', 'xterm': 'u2r',
+        'normal': 'normal'
+    }
+
     # Registrar tiempo de inicio de inferencia
     start_inference = time.time()
     
@@ -114,11 +145,17 @@ def evaluate_model(model, X_test, y_test, le):
     total_inference_time = end_inference - start_inference
     inference_time_per_sample_ms = (total_inference_time / len(X_test)) * 1000
     
-    # Obtener los nombres reales de las clases desde el LabelEncoder
-    target_names = le.classes_
+    # Mapeo a macro-categorías para el reporte
+    y_test_labels = y_test.values
+    y_pred_labels = le.inverse_transform(y_pred)
+    
+    y_test_macro = [ATTACK_MAP.get(l, 'unknown') for l in y_test_labels]
+    y_pred_macro = [ATTACK_MAP.get(l, 'unknown') for l in y_pred_labels]
+    
+    unique_labels = sorted(list(set(y_test_macro) | set(y_pred_macro)))
     
     # Generar classification_report de scikit-learn
-    report = classification_report(y_test, y_pred, target_names=target_names)
+    report = classification_report(y_test_macro, y_pred_macro, labels=unique_labels, target_names=unique_labels)
     report_text = "\n" + "="*60 + "\n REPORTE DE CLASIFICACIÓN (Efectividad de Identificación) \n" + "="*60 + "\n" + report
     print(report_text)
     
@@ -127,11 +164,11 @@ def evaluate_model(model, X_test, y_test, le):
         f.write(report_text)
     
     # Generar y guardar la Matriz de Confusión
-    cm = confusion_matrix(y_test, y_pred)
+    cm = confusion_matrix(y_test_macro, y_pred_macro, labels=unique_labels)
     plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=target_names, yticklabels=target_names)
-    plt.title('Matriz de Confusión - Prototipo IDS (LightGBM)')
+                xticklabels=unique_labels, yticklabels=unique_labels)
+    plt.title('Matriz de Confusión Macro - Prototipo IDS (LightGBM)')
     plt.xlabel('Clase Predicha')
     plt.ylabel('Clase Real')
     plt.tight_layout()
@@ -139,10 +176,10 @@ def evaluate_model(model, X_test, y_test, le):
     plt.close()
     
     # Calcular métricas macro requeridas para la tabla resumen
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred, average='macro', zero_division=0)
-    rec = recall_score(y_test, y_pred, average='macro', zero_division=0)
-    f1 = f1_score(y_test, y_pred, average='macro', zero_division=0)
+    acc = accuracy_score(y_test_macro, y_pred_macro)
+    prec = precision_score(y_test_macro, y_pred_macro, average='macro', zero_division=0)
+    rec = recall_score(y_test_macro, y_pred_macro, average='macro', zero_division=0)
+    f1 = f1_score(y_test_macro, y_pred_macro, average='macro', zero_division=0)
     
     return inference_time_per_sample_ms, acc, prec, rec, f1
 
@@ -188,15 +225,15 @@ def main():
     X_train, y_train, X_test, y_test = load_and_filter_data()
     
     print("[*] 2. Aplicando Label Encoding...")
-    y_train_enc, y_test_enc, le = encode_labels(y_train, y_test)
+    y_train_enc, le = encode_labels(y_train)
     
     # 2. Configuración y Entrenamiento de LightGBM
     print("[*] 3. Entrenando el clasificador LightGBM...")
-    model, training_time = train_model(X_train, y_train_enc)
+    model, training_time = train_model(X_train, y_train_enc, le)
     
     # 3. Evaluación Rigurosa
     print("[*] 4. Evaluando el modelo (métricas y matriz de confusión)...")
-    inference_ms, acc, prec, rec, f1 = evaluate_model(model, X_test, y_test_enc, le)
+    inference_ms, acc, prec, rec, f1 = evaluate_model(model, X_test, y_test, le)
     
     # 4. Imprimir los resultados consolidados de la Matriz de Consistencia
     print_consistency_matrix_summary(training_time, inference_ms, acc, prec, rec, f1)

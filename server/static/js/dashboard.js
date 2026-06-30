@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const shapModal = document.getElementById('shap-modal');
     const closeModalBtn = document.getElementById('close-modal');
     const shapImage = document.getElementById('shap-image');
+    const tacticalNlp = document.getElementById('tactical-nlp');
+    const mitreTacticsList = document.getElementById('mitre-tactics-list');
 
     closeModalBtn.addEventListener('click', () => {
         shapModal.classList.add('hidden');
@@ -158,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let predClass = isMalicious ? 'text-soc-red border-soc-red bg-soc-red/10' : 'text-soc-green border-soc-green bg-soc-green/10';
         let rowHighlight = isMalicious && alert.confidence > 0.9 ? 'bg-soc-red/5 border-l-2 border-soc-red' : (isNormal ? 'bg-soc-green/5 border-l-2 border-soc-green' : 'border-l-2 border-transparent');
+        // Show specific signature (or macro) on the row
         let alertLabel = isMalicious ? `DETECTED: ${alert.prediction.toUpperCase()}` : 'NORMAL_TRAFFIC';
         let confColor = isMalicious && alert.confidence > 0.9 ? 'bg-soc-red' : (isMalicious ? 'bg-soc-yellow' : 'bg-soc-green');
         let confText = isMalicious && alert.confidence > 0.9 ? 'text-soc-red' : (isMalicious ? 'text-soc-yellow' : 'text-soc-green');
@@ -166,6 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
         row.className = `hover:bg-soc-panel transition-colors row-animate-in ${rowHighlight}`;
         row.setAttribute('data-threat-class', isMalicious ? 'MALICIOUS' : 'NORMAL');
         row.setAttribute('data-ips', `${alert.src_ip} ${alert.dst_ip} ${alert.node_ip}`);
+        
+        let nlpText = "N/A";
+        let mitreList = "N/A";
+        if (alert.tactical_info) {
+            nlpText = alert.tactical_info.nlp;
+            mitreList = JSON.stringify(alert.tactical_info.mitre);
+        }
+
         row.innerHTML = `
             <td class="px-4 py-3 whitespace-nowrap">
                 <div class="text-soc-white/80">${alert.timestamp}</div>
@@ -175,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="text-[9px] text-soc-text opacity-50 uppercase tracking-widest">SENSOR: ${alert.node_ip}</div>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
-                <span class="inline-block px-2 py-0.5 text-[10px] uppercase font-bold border ${predClass}">
+                <span class="inline-block px-2 py-0.5 text-[10px] uppercase font-bold border ${predClass}" title="Macro Class: ${alert.macro_class || 'N/A'}">
                     ${alertLabel}
                 </span>
             </td>
@@ -194,7 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td class="px-4 py-3 text-right">
                 <button class="analyze-btn px-3 py-1 text-[10px] font-mono border border-soc-cyan text-soc-cyan hover:bg-soc-cyan hover:text-soc-bg transition-colors"
-                        data-plot="${alert.shap_plot_b64}">
+                        data-plot="${alert.shap_plot_b64}"
+                        data-nlp="${encodeURIComponent(nlpText)}"
+                        data-mitre='${encodeURIComponent(mitreList)}'>
                     <i class="fa-solid fa-microscope mr-1"></i>ANALYZE
                 </button>
             </td>
@@ -210,6 +223,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if(btn) {
             btn.addEventListener('click', function() {
                 shapImage.src = this.getAttribute('data-plot');
+                
+                try {
+                    tacticalNlp.textContent = decodeURIComponent(this.getAttribute('data-nlp'));
+                    const mitreArr = JSON.parse(decodeURIComponent(this.getAttribute('data-mitre')));
+                    mitreTacticsList.innerHTML = mitreArr.map(m => `<li>${m}</li>`).join('');
+                } catch(e) {
+                    tacticalNlp.textContent = 'Error parsing NLP data.';
+                    mitreTacticsList.innerHTML = '<li>N/A</li>';
+                }
+
                 shapModal.classList.remove('hidden');
             });
         }

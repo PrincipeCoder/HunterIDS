@@ -31,35 +31,24 @@ NSL_KDD_COLUMNS = [
 
 def cargar_datos(train_path, test_path):
     print(f"\n[INFO] Cargando conjunto principal desde: {train_path}")
-    df = pd.read_csv(train_path, header=None, names=NSL_KDD_COLUMNS)
+    df_train = pd.read_csv(train_path, header=None, names=NSL_KDD_COLUMNS)
     
-    if 'difficulty_level' in df.columns:
-        df = df.drop('difficulty_level', axis=1)
-
-    ATTACK_MAP = {
-        'back': 'dos', 'land': 'dos', 'neptune': 'dos', 'pod': 'dos', 'smurf': 'dos', 
-        'teardrop': 'dos', 'apache2': 'dos', 'mailbomb': 'dos', 'processtable': 'dos', 'udpstorm': 'dos',
-        'ipsweep': 'probe', 'nmap': 'probe', 'portsweep': 'probe', 'satan': 'probe', 
-        'mscan': 'probe', 'saint': 'probe',
-        'ftp_write': 'r2l', 'guess_passwd': 'r2l', 'imap': 'r2l', 'multihop': 'r2l', 
-        'phf': 'r2l', 'spy': 'r2l', 'warezclient': 'r2l', 'warezmaster': 'r2l',
-        'sendmail': 'r2l', 'named': 'r2l', 'snmpgetattack': 'r2l', 'snmpguess': 'r2l', 
-        'xlock': 'r2l', 'xsnoop': 'r2l', 'worm': 'r2l',
-        'buffer_overflow': 'u2r', 'loadmodule': 'u2r', 'perl': 'u2r', 'rootkit': 'u2r', 
-        'httptunnel': 'u2r', 'ps': 'u2r', 'sqlattack': 'u2r', 'xterm': 'u2r',
-        'normal': 'normal'
-    }
-
-    df['label'] = df['label'].astype(str).str.strip('.')
-    df['label'] = df['label'].map(ATTACK_MAP).fillna('unknown')
-
-    X = df.drop('label', axis=1)
-    y = df['label']
+    print(f"[INFO] Cargando conjunto de prueba externo desde: {test_path}")
+    df_test = pd.read_csv(test_path, header=None, names=NSL_KDD_COLUMNS)
     
-    # ESTRATEGIA DEFINITIVA PARA >95% EN PAPERS DE ML:
-    # Hacemos split estratificado sobre el conjunto de entrenamiento (80/20) para evitar
-    # el data-shift extremo (Zero-Days) de KDDTest+ que rompe el límite del 80% en LightGBM.
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+    if 'difficulty_level' in df_train.columns:
+        df_train = df_train.drop('difficulty_level', axis=1)
+    if 'difficulty_level' in df_test.columns:
+        df_test = df_test.drop('difficulty_level', axis=1)
+
+    df_train['label'] = df_train['label'].astype(str).str.strip('.')
+    df_test['label'] = df_test['label'].astype(str).str.strip('.')
+
+    X_train = df_train.drop('label', axis=1)
+    y_train = df_train['label']
+    
+    X_test = df_test.drop('label', axis=1)
+    y_test = df_test['label']
     
     print(f"[SHAPE] X_train: {X_train.shape}, y_train: {y_train.shape}")
     print(f"[SHAPE] X_test:  {X_test.shape}, y_test:  {y_test.shape}")

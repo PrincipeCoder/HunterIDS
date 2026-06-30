@@ -293,17 +293,35 @@
 
     <!-- SHAP Modal -->
     <div id="shap-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div class="soc-panel max-w-4xl w-full mx-4 relative border-t-4 border-soc-cyan">
+        <div class="soc-panel max-w-4xl w-full mx-4 relative border-t-4 border-soc-cyan flex flex-col max-h-[90vh]">
             <!-- Close Button -->
             <button id="close-modal" class="absolute top-4 right-4 text-soc-text hover:text-soc-white transition-colors">
                 <i class="fa-solid fa-xmark text-2xl"></i>
             </button>
             
-            <h2 class="text-xl font-mono text-soc-cyan mb-4 uppercase tracking-widest"><i class="fa-solid fa-microscope mr-2"></i>XAI Analysis: SHAP Waterfall</h2>
-            <div class="text-xs font-mono text-soc-text mb-6">Visualización algorítmica de la contribución de características a la predicción final.</div>
+            <h2 class="text-xl font-mono text-soc-cyan mb-2 uppercase tracking-widest"><i class="fa-solid fa-microscope mr-2"></i>TACTICAL ALERT ANALYSIS</h2>
             
-            <div class="bg-[#0a1118] border border-soc-border rounded overflow-hidden flex items-center justify-center min-h-[400px]">
-                <img id="shap-image" src="" alt="SHAP Plot" class="max-w-full max-h-[600px] object-contain">
+            <!-- Primary Focus: Tactical Explanation NLP -->
+            <div class="bg-soc-red/10 border border-soc-red rounded p-4 mb-4 mt-2">
+                <h3 class="text-soc-red font-bold uppercase tracking-widest text-sm mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Executive Summary</h3>
+                <p id="tactical-nlp" class="text-soc-white font-mono text-sm">Awaiting linguistic translation...</p>
+            </div>
+            
+            <div class="mb-4">
+                <h3 class="text-soc-cyan font-bold uppercase tracking-widest text-xs mb-2">Mapped MITRE ATT&CK Tactics</h3>
+                <ul id="mitre-tactics-list" class="text-soc-text font-mono text-xs list-disc list-inside">
+                    <li>N/A</li>
+                </ul>
+            </div>
+            
+            <!-- Secondary Focus: SHAP Waterfall Plot -->
+            <div class="text-xs font-mono text-soc-text mb-2 border-t border-soc-border pt-4 mt-2">
+                <span class="text-soc-cyan uppercase">Mathematical Verification (TreeSHAP)</span> <br>
+                Visualización algorítmica de la contribución de características para análisis forense profundo.
+            </div>
+            
+            <div class="bg-[#0a1118] border border-soc-border rounded overflow-y-auto flex-grow flex items-center justify-center min-h-[300px]">
+                <img id="shap-image" src="" alt="SHAP Plot" class="max-w-full max-h-[500px] object-contain">
             </div>
         </div>
     </div>
