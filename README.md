@@ -12,6 +12,11 @@ Este repositorio implementa las investigaciones, metodologías y resultados cien
 > **"Prototipo de IDS con IA Explicable (XAI) para mejorar la detección de intrusiones en las redes SOC mediante el Dataset NSL-KDD, 2026"**  
 > *A. Principe, C. Santana y Y. Tello — Escuela Profesional de Ciberseguridad, Universidad Nacional de Ingeniería (Lima, Perú).*
 
+<p align="center">
+  <img src="sello-ccc.jpg" alt="Aprobado por el Centro Cultural de Ciberseguridad UNI" width="900">
+</p>
+<br>
+
 ---
 
 ## 📌 El Problema en los Centros de Operaciones de Seguridad (SOC)
