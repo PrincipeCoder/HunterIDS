@@ -244,7 +244,7 @@ Si utilizas este software o su metodología en tu investigación o entorno opera
 ```
 
 * **Anghelo Kenedy Principe Ostos** — *Conceptualización, Metodología, Curación de Datos, Software y Administración del Proyecto.*
-* **Carlos Santana Palomino** — *Metodología, Análisis Formal, Supervisiones y Redacción.*
+* **Carlos Santana Palomino** — *Metodología, Análisis Formal, Recursos, Supervisiones y Redacción.*
 * **Yury Tello Canchapoma** — *Validación Metodológica y Revisión Técnica.*
 
 ---
